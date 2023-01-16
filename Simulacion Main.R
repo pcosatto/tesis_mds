@@ -1,12 +1,10 @@
 #Simulacion Main Script
 source('aux_functions.R'); source('cmdscaling.R')
-#n_cores <- parallel::detectCores()
+n_cores <- parallel::detectCores()
 n_cores <- 1
 
-#main functions
-#-----------------------------------------------------------------------------
-
 #MDS CLASICO-----------------
+
 resultados_cmds <- c()
 Nrep <- 1
 sizes <- c(1000, 2000, 3000)
@@ -17,22 +15,28 @@ for(size in sizes){
     tiempo <- 0
     for(rep in 1:Nrep){
 
+      set.seed(16497+rep)
       X <- mvrnorm(size,rep(0,2),diag(c(1,1)))
 
       t0 <- Sys.time()
 
       B <- X %*% t(X)
       eig <- eigen(B)
-      escalado <- eig$values %*% diag(eig$vectors^(1/2))
+      escalado <- eig$vectors %*% diag(eig$values^(1/2))
 
       tf <- Sys.time()
+
       print(c(size,rep))
-      tiempo <- tiempo + (tf - t0)
+
+      tiempo <- tiempo + as.numeric(tf-t0,units='secs')
       rm(escalado)
     }
-        resultados_cmds <- c(resultados_cmds,tiempo/5)
+        resultados_cmds <- c(resultados_cmds,tiempo/Nrep)
   }
 }
+
+#plot(c(1000, 2000, 3000),resultados_cmds, type='b')
+#curve((x/1500)^3, add=TRUE, col='orange', lwd=2)
 
 #PRIMER BLOQUE-----------------------
 primer_bloque <- data.frame()

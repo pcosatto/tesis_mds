@@ -205,13 +205,6 @@ eigenvalues_calculation <- function(X_star){
   names(val) <- paste('eig',1:length(val))
   return(val)
 }
-strain_loss_calculation <- function(data,X_star){
-  B <- data %*% t(data)
-  B_1 <- X_star %*% t(X_star)
-
-  sum((B - B_1)^2)/sum(B^2)
-
-}
 mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
   #Empty data frames and lists
@@ -253,16 +246,11 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
                                 seed = n+i-1, n_cores=n_cores)$conf
       tf <- Sys.time()
 
-      if(n <= 2000){
-        strain_loss <- strain_loss_calculation(data,X_star)
-      } else {strain_loss <- 0}
-
-
       #information for the summary
       line <- c(id, i, scenario, n, p,k, h, metodos[j],
-                as.numeric(tf-t0,units='secs'), strain_loss)
+                as.numeric(tf-t0,units='secs'))
       names(line) <- c('id','nrep','scenario','size','p','k','h','method',
-                       't','strain')
+                       't')
 
       #eigenvalues
       line <- c(line,eigenvalues_calculation(X_star))

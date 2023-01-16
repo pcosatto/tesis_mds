@@ -39,7 +39,8 @@ cmdscaling_test <- function(X0, k, l, c = 2*k, m,
 
         first_partition <- permutation[1:l]
         last_partition <- permutation[(n-last_partition_sample_size+1):n]
-        list_indexes <- split(x = permutation[(l+1):(n-last_partition_sample_size)], f = 1:(p-2))
+        list_indexes <- split(x = permutation[(l+1):(n-last_partition_sample_size)],
+                              f = 1:(p-2))
         names(list_indexes) <- NULL
         list_indexes[[p-1]] <- list_indexes[[1]]
         list_indexes[[p]] <- last_partition
@@ -111,7 +112,8 @@ cmdscaling_test <- function(X0, k, l, c = 2*k, m,
                                          alignment(X[idm,],Xj[1:c,],Xj[-(1:c),],
                                                    method)
                                        },
-                                       mc.cores = n_cores) #scaling and alignment of the rest
+                                       mc.cores = n_cores)
+    #scaling and alignment of the rest
 
     X[Reduce(c,idx[-1]),] <- Reduce(rbind,results_list)
 

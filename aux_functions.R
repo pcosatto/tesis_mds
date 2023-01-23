@@ -1,37 +1,35 @@
 #Aux Functions
 
-
-#Batería de funciones TESIS MDS-----------
+#Batería de librerias y funciones iniciales TESIS MDS-----------
 rm(list = ls())
-load <- function(){
+load_ini <- function(){
 
   library(extrafont); library(latex2exp); library(xtable)
-  library(scales); library(MASS)
+  library(scales); library(MASS); library(cmna)
   library(readxl); library(smacof); library(scatterplot3d)
+  library(dplyr)
   #remotes::install_version("Rttf2pt1", version = "1.3.8")
   #extrafont::font_import()
   loadfonts(device="win")       #Register fonts for Windows bitmap output
 }
-load()
-
+load_ini()
 graph_par <- function(){
   par(family = "Verdana", cex.axis=0.7, cex.lab=0.7, mar=c(4,4,2,3) - 1.5,
       mgp=c(1.1,0.25,0), tcl=0)
 }
 graph_par()
-
 array_to_LaTeX <- function(arr){
   rows <- apply(arr, MARGIN=1, paste, collapse = " & ")
   matrix_string <- paste(rows, collapse = " \\\\ ")
   return(paste("\\begin{pmatrix}", matrix_string, "\\end{pmatrix}"))
 }
 
-#Bondad de ajuste MDS
-MDS_GOF <- function(delta, method=c('CMDS', 'LSMDS'), type=NULL, kmax=NULL){
+#Funciones generales MDS (cuentas)----------------------
+frobenius <- function(A){
+  sqrt(sum(A^2))
+}
 
-  frobenius <- function(A){
-    sqrt(sum(A^2))
-  }
+MDS_GOF <- function(delta, method=c('CMDS', 'LSMDS'), type=NULL, kmax=NULL){
 
   delta <- as.matrix(delta)
 
@@ -73,14 +71,13 @@ MDS_GOF <- function(delta, method=c('CMDS', 'LSMDS'), type=NULL, kmax=NULL){
   return(list('sigma_strain'= sigma_strain,
               'sigma_1' = sigma_1))
 }
-
-#Funciones sencillas
 I <- function(n){
   matrix(1, n, 1)
 }
 H <- function(n,m){
   diag(rep(1,n)) - 1/n * matrix(1, n, 1) %*% matrix(1,1,n)
 }
+
 
 #Metodos rapidos --------------
 procrustes <- function(OBJ,PART){
@@ -100,7 +97,8 @@ procrustes <- function(OBJ,PART){
   s <- sum(diag(C %*% T)) / sum(diag(t(B) %*% H %*% B))
   t <- 1/n * t(A - s * B %*% T) %*% matrix(1,n,1)
 
-  return(list('T'=T, 's'=s,'t'=t))
+  return(list('T'=T, 's'=s,'t'=t,
+                'conf'= s * PART %*% T + matrix(1,n,1) %*% t(t)))
 
 }
 QR <- function(OBJ,PART){
@@ -122,7 +120,8 @@ QR <- function(OBJ,PART){
   s <- 1
   t <-  colMeans(OBJ) - t(T) %*% colMeans(PART)
 
-  return(list('T'=T, 's'=s,'t'=t))
+  return(list('T'=T, 's'=s,'t'=t,
+              'conf'= s * PART %*% T + matrix(1,n,1) %*% t(t)))
 
 }
 Gower <- function(EXIS, D_EXIS, DELTA_NUEVAS){
@@ -148,7 +147,7 @@ Gower <- function(EXIS, D_EXIS, DELTA_NUEVAS){
 
 }
 
-#Funciones para biplots-----------------
+#Funciones para biplots (cap1)-----------------
 #Locus para biplots
 locus <- function(e){
   I <- function(n){
@@ -198,7 +197,7 @@ procrustes_projection <- function(X,Y){
 }
 
 
-# Funciones para la simulacion principal
+# Funciones para la simulacion principal -----------
 eigenvalues_calculation <- function(X_star){
   n <- nrow(X_star)
   val <- eigen((n-1)/n*cov(X_star))$values
@@ -267,4 +266,63 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
 
 }
+recover_solution_from_summary <- function(results, id, recover_scaling=FALSE){
+
+  nrep <- results$rep[id]
+  scenario <- as.numeric(results$scenario[id])
+  n <- as.numeric(results$size[id])
+  p <- as.numeric(results$p[id])
+  k <- as.numeric(results$k[id])
+  h <- as.numeric(results$h[id])
+  method <- as.numeric(results$method[id])
+
+  #Simulation of original data
+  library(MASS)
+  #Variances
+  if(h<=1){
+    sigma1 <- diag(c(rep(15,p)))
+    sigma2 <- diag(c(rep(60,2),rep(15,p-2)))
+  } else {
+    sigma1 <- diag(c(rep(15,h),rep(1,p-h)))
+    sigma2 <- diag(c(rep(60,2),rep(15,h-2),rep(1,p-h)))
+  }
+
+  X0 <- switch(scenario,{
+    set.seed(n+nrep-1)
+    mvrnorm(n,rep(0,p),sigma1)},
+    {
+      set.seed(n+nrep-1)
+      rbind(mvrnorm(0.95*n,rep(0,p),sigma1),
+            mvrnorm(0.05*n,rep(0,p),sigma2))[sample(n),]
+    }
+  )
+  return(X0)
+
+  if(recover_scaling == TRUE){
+    t0 <- Sys.time()
+    X <- cmdscaling_test(X0, k, l=400, c=2*k, m=400, method=method,
+                         seed = n+nrep-1, n_cores=n_cores)$conf
+    tf <- Sys.time()
+    return(list('X0'=X0, 'X'=X, 'tiempo'=as.numeric(tf-t0,units='secs')))
+  }
+
+}
+
+
+# Funciones para el analisis y graficos-----------
+grafico_interaccion <- function(data,pal){
+  palette(pal)
+  resumen <- tidyr::pivot_wider(data, names_from = p, values_from = t,
+                                values_fn  =mean, values_fill = 0)
+  plot(c(1000,2000,3000),c(resumen$'2'), type='l', ylim=c(0,1.1),
+       xlim=c(1000,3300),
+       xlab='Tamaño de muestra', ylab='Tiempo medio (s)',
+       lwd=2,col=1)
+  lines(c(1000,2000,3000),c(resumen$'10'), lwd=2,col=2)
+  lines(c(1000,2000,3000),c(resumen$'25'), lwd=2, col=3)
+  lines(c(1000,2000,3000),c(resumen$'50'), lwd=2, col=4)
+  text(rep(3000,3),resumen[3,-1], label=c('p=2','p=10','p=25','p=50'),
+       pos=4, cex=0.6)
+}
+
 

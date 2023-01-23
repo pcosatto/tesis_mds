@@ -2,63 +2,62 @@
 source('aux_functions.R'); source('cmdscaling.R')
 n_cores <- parallel::detectCores()
 
-#MDS CLASICO-----------------
-
-resultados_cmds <- c()
+#PRELIMINAR DE TIEMPOS (Primer bloque)-------------
+primer_bloque <- as.data.frame(matrix(0,nrow=4,ncol=3))
 Nrep <- 10
 sizes <- c(1000, 2000, 3000)
-dims <- 2
-for(size in sizes){
-  for(dim in dims){
+colnames(primer_bloque) <- as.character(sizes)
+rownames(primer_bloque) <- c('cmds','proc',
+                             'qr','gow')
 
-    tiempo <- 0
+for(size in sizes){
+    tiempo <- 
     for(rep in 1:Nrep){
 
       set.seed(16497+rep)
       X <- mvrnorm(size,rep(0,2),diag(c(1,1)))
-
-      t0 <- Sys.time()
-
       B <- X %*% t(X)
+      
+      t0 <- Sys.time()
       eig <- eigen(B)
       escalado <- eig$vectors %*% diag(eig$values^(1/2))
-
       tf <- Sys.time()
-
-      print(c(size,rep))
 
       tiempo <- tiempo + as.numeric(tf-t0,units='secs')
       rm(escalado)
     }
-        resultados_cmds <- c(resultados_cmds,tiempo/Nrep)
+        resultados <- c(resultados,tiempo/Nrep)
   }
-}
+
+primer_bloque[[1]] <- resultados
 
 #plot(c(1000, 2000, 3000),resultados_cmds, type='b')
 #curve((x/1500)^3, add=TRUE, col='orange', lwd=2)
 
-#PRIMER BLOQUE-----------------------
 primer_bloque <- data.frame()
-Nrep <- 10
-sizes <- c(1000, 2000, 3000)
-dims <- c(2, 10, 25, 50)
 metodos <- c('proc','qr','gow')
 for(size in sizes){
-  for(dim in dims){
-    primer_bloque <- dplyr::bind_rows(primer_bloque,
-                                      mds_simulation(size, Nrep, scenario=1,
-                                                     p=dim, k=dim, h=0, metodos))
-  }
-}
-
-sizes <- c(1000, 2000, 3000)
-dims <- c(2, 3, 4)
-metodos <- c('port')
-for(size in sizes){
-  for(dim in dims){
-    primer_bloque <- dplyr::bind_rows(primer_bloque,
-                                      mds_simulation(size, Nrep, scenario=1,
-                                                     p=dim, k=dim, h=0, metodos))
+  for(metodo in metodos){
+    tiempo <- 0
+    for(rep in 1:Nrep){
+      
+      set.seed(16497+rep)
+      X <- mvrnorm(size,rep(0,2),diag(c(1,1)))
+      B <- X %*% t(X)
+      
+      t0 <- Sys.time()
+      
+      escalado <- cmdscaling()
+      
+      tf <- Sys.time()
+      
+      print(c(size,rep))
+      
+      tiempo <- tiempo + as.numeric(tf-t0,units='secs')
+      rm(escalado)
+    }
+    resultados <- c(resultados,tiempo/Nrep)
+    
   }
 }
 
@@ -111,9 +110,6 @@ rm(metricas)
   lines(2:p,gow[[3]], col='steelblue3', lwd=2)
 
 }
-
-
-
 
 #SEGUNDO BLOQUE - Escenario 2---------------------------
 segundo_bloque_2 <- data.frame()

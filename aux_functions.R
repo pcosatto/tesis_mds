@@ -213,11 +213,11 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
   #Variances
   if(h<=1){
-    sigma1 <- diag(c(rep(15,p)))
-    sigma2 <- diag(c(rep(60,2),rep(15,p-2)))
+    sigma1 <- diag(c(rep(5,p)))
+    sigma2 <- diag(c(rep(25,2),rep(5,p-2)))
   } else {
-    sigma1 <- diag(c(rep(15,h),rep(1,p-h)))
-    sigma2 <- diag(c(rep(60,2),rep(15,h-2),rep(1,p-h)))
+    sigma1 <- diag(c(rep(5,h),rep(1,p-h)))
+    sigma2 <- diag(c(rep(25,2),rep(5,h-2),rep(1,p-h)))
   }
 
 
@@ -265,6 +265,108 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
 
 
+}
+metricas_bloque2 <- function(Nrep){
+  p <- 10; d <- 5
+  sigma <- diag(c(rep(5,d)))
+  sigma_err <- diag(rep(1,p-d))
+  
+  {
+    stress1_cmds <- matrix(NA,Nrep,p-1)
+    strain_cmds <- matrix(NA,Nrep,p-1)
+    stress1_proc <- matrix(NA,Nrep,p-1)
+    strain_proc <- matrix(NA,Nrep,p-1)
+    loss_proc <- matrix(NA,Nrep,p-1)
+    stress1_qr <- matrix(NA,Nrep,p-1)
+    strain_qr <- matrix(NA,Nrep,p-1)
+    loss_qr <- matrix(NA,Nrep,p-1)
+    stress1_gow <- matrix(NA,Nrep,p-1)
+    strain_gow <- matrix(NA,Nrep,p-1)
+    loss_gow <- matrix(NA,Nrep,p-1)
+    
+  }
+  
+  for(seed in 1:Nrep){
+    {
+      set.seed(seed)
+      X <- mvrnorm(1000,rep(0,d),sigma)
+      E <- mvrnorm(1000,rep(0,p-d),sigma_err)
+      Y <- cbind(X,E)
+      delta_x <- dist(X)
+      delta_y <- dist(Y)
+      B_x <- X %*% t(X)
+      B_y <- Y %*% t(Y)
+    }
+    
+    #CMDS
+    {
+      Z_cmds <- cmdscale(delta_y,k=p)
+      
+      for(k in 2:p){
+        D_z <- dist(Z_cmds[,1:k]); B_z <- Z_cmds[,1:k] %*% t(Z_cmds[,1:k])
+        
+        stress1_cmds[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
+        strain_cmds[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+      }
+    }
+    
+    #Procrustes
+    {
+      
+      for(k in 2:p){
+        Z_proc <- cmdscaling_test(Y,k,l=400,c=2*k,
+                                  m=400,seed=seed+1000-1,'proc',n_cores = n_cores)$conf
+        Z_proc <- procrustes(Z_cmds[,1:k],Z_proc)$conf
+        D_z <- dist(Z_proc); B_z <- Z_proc %*% t(Z_proc)
+        
+        stress1_proc[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
+        strain_proc[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        loss_proc[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_proc)/frobenius(Z_cmds[,1:k])
+      }
+    }
+    
+    #QR
+    {
+      
+      for(k in 2:p){
+        Z_qr <- cmdscaling_test(Y,k,l=400,c=2*k,
+                                m=400,seed=seed+1000-1,'qr',n_cores = n_cores)$conf
+        Z_qr <- procrustes(Z_cmds[,1:k],Z_qr)$conf
+        D_z <- dist(Z_qr); B_z <- Z_qr %*% t(Z_qr)
+        
+        stress1_qr[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
+        strain_qr[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        loss_qr[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_qr)/frobenius(Z_cmds[,1:k])
+      }
+    }
+    
+    #GOW
+    {
+      
+      for(k in 2:p){
+        Z_gow <- cmdscaling_test(Y,k,l=400,c=2*k,
+                                 m=400,seed=seed+1000-1,'gow',n_cores = n_cores)$conf
+        Z_gow <- procrustes(Z_cmds[,1:k],Z_gow)$conf
+        D_z <- dist(Z_gow); B_z <- Z_gow %*% t(Z_gow)
+        
+        stress1_gow[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
+        strain_gow[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        loss_gow[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_gow)/frobenius(Z_cmds[,1:k])
+      }
+    }
+    
+    cat(paste(seed,'-'))
+    
+  }
+  
+  metricas_cmds <- list(stress1_cmds,strain_cmds)
+  metricas_proc <- list(stress1_proc,strain_proc,loss_proc)
+  metricas_qr <- list(stress1_qr,strain_qr,loss_qr)
+  metricas_gow <- list(stress1_gow,strain_gow,loss_gow)
+  
+  return(list(metricas_cmds,
+              metricas_proc,metricas_qr,
+              metricas_gow))
 }
 recover_solution_from_summary <- function(results, id, recover_scaling=FALSE){
 

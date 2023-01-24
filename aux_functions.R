@@ -260,10 +260,10 @@ simulacion_core <- function(n,Nrep,scenario,p,k,h=0,metodos){
   #Variances
   if(h<=1){
     sigma1 <- diag(c(rep(5,p)))
-    sigma2 <- diag(c(rep(25,2),rep(5,p-2)))
+    sigma2 <- diag(c(rep(5,p)))
   } else {
     sigma1 <- diag(c(rep(5,h),rep(1,p-h)))
-    sigma2 <- diag(c(rep(25,2),rep(5,h-2),rep(1,p-h)))
+    sigma2 <- diag(c(rep(5,h),rep(25,2),rep(1,p-h-2)))
   }
 
   w <- 0; W <- Nrep*length(metodos)

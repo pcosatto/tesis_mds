@@ -1,6 +1,6 @@
 #Aux Functions
 
-#Batería de librerias y funciones iniciales TESIS MDS-----------
+# Batería de librerias y funciones iniciales TESIS MDS-----------
 rm(list = ls())
 load_ini <- function(){
 
@@ -24,11 +24,11 @@ array_to_LaTeX <- function(arr){
   return(paste("\\begin{pmatrix}", matrix_string, "\\end{pmatrix}"))
 }
 
-#Funciones generales MDS (cuentas)----------------------
+
+# Funciones generales MDS (cuentas)----------------------
 frobenius <- function(A){
   sqrt(sum(A^2))
 }
-
 MDS_GOF <- function(delta, method=c('CMDS', 'LSMDS'), type=NULL, kmax=NULL){
 
   delta <- as.matrix(delta)
@@ -79,7 +79,8 @@ H <- function(n,m){
 }
 
 
-#Metodos rapidos --------------
+
+# Metodos rapidos --------------
 procrustes <- function(OBJ,PART){
 
   A <- OBJ
@@ -147,7 +148,8 @@ Gower <- function(EXIS, D_EXIS, DELTA_NUEVAS){
 
 }
 
-#Funciones para biplots (cap1)-----------------
+
+# Funciones para biplots (cap1)-----------------
 #Locus para biplots
 locus <- function(e){
   I <- function(n){
@@ -197,14 +199,58 @@ procrustes_projection <- function(X,Y){
 }
 
 
-# Funciones para la simulacion principal -----------
-eigenvalues_calculation <- function(X_star){
+
+# Funciones para la simulacion (cap3) -----------
+primera_simulacion <- function(Nrep){
+  cat('Primera simulación - Avance %: ')
+
+  resultados <- matrix(0,nrow=4,ncol=3)
+  sizes <- c(1000, 2000, 3000)
+  metodos <- c('cmds','proc','qr','gow')
+
+  w <- 0; W <- length(sizes)*Nrep*length(metodos)
+  for(j in seq_along(sizes)){
+    for(rep in 1:Nrep){
+
+      set.seed(16497+rep)
+      X <- mvrnorm(sizes[j],rep(0,2),diag(c(1,1)))
+
+      for(i in seq_along(metodos)){
+
+        if(metodos[i] == 'cmds'){
+          t0 <- Sys.time()
+          B <- X %*% t(X); eig <- eigen(B)
+          escalado <- eig$vectors[,1:2] %*% diag(eig$values[1:2]^(1/2))
+          tf <- Sys.time()
+        } else {
+          t0 <- Sys.time()
+          escalado <- cmdscaling_test(X,k=2,l=400,
+                                      c= 4, m=400,
+                                      method=metodos[i],seed = 16497+rep,
+                                      n_cores=n_cores)$conf
+          tf <- Sys.time()
+        }
+
+        resultados[i,j] <- resultados[i,j] + as.numeric(tf-t0,units='secs')
+        rm(escalado); w <- w+1; cat(round(100*w/W),' - ')
+      }
+
+    }
+  }
+
+
+  resultados <- as.data.frame(resultados/Nrep)
+  colnames(resultados) <- as.character(sizes)
+  rownames(resultados) <- metodos
+  return(resultados)
+}
+calcular_autovalores <- function(X_star){
   n <- nrow(X_star)
   val <- eigen((n-1)/n*cov(X_star))$values
   names(val) <- paste('eig',1:length(val))
   return(val)
 }
-mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
+simulacion_core <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
   #Empty data frames and lists
   table <- data.frame()
@@ -220,7 +266,7 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
     sigma2 <- diag(c(rep(25,2),rep(5,h-2),rep(1,p-h)))
   }
 
-
+  w <- 0; W <- Nrep*length(metodos)
   for(i in 1:Nrep){
     #Simulation
 
@@ -252,12 +298,12 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
                        't')
 
       #eigenvalues
-      line <- c(line,eigenvalues_calculation(X_star))
+      line <- c(line,calcular_autovalores(X_star))
 
       #table
       table <- dplyr::bind_rows(table,line)
 
-      print(paste(c(metodos[j], n, i, scenario)))
+      w <- w+1; cat(round(100*w/W),' - ')
     }
   }
 
@@ -266,11 +312,12 @@ mds_simulation <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
 
 }
-metricas_bloque2 <- function(Nrep){
+calcular_metricas <- function(Nrep){
+  cat('Metricas - Avance %: ')
   p <- 10; d <- 5
   sigma <- diag(c(rep(5,d)))
   sigma_err <- diag(rep(1,p-d))
-  
+
   {
     stress1_cmds <- matrix(NA,Nrep,p-1)
     strain_cmds <- matrix(NA,Nrep,p-1)
@@ -283,9 +330,10 @@ metricas_bloque2 <- function(Nrep){
     stress1_gow <- matrix(NA,Nrep,p-1)
     strain_gow <- matrix(NA,Nrep,p-1)
     loss_gow <- matrix(NA,Nrep,p-1)
-    
+
   }
-  
+
+  w <- 0; W <- Nrep
   for(seed in 1:Nrep){
     {
       set.seed(seed)
@@ -297,78 +345,118 @@ metricas_bloque2 <- function(Nrep){
       B_x <- X %*% t(X)
       B_y <- Y %*% t(Y)
     }
-    
+
     #CMDS
     {
       Z_cmds <- cmdscale(delta_y,k=p)
-      
+
       for(k in 2:p){
         D_z <- dist(Z_cmds[,1:k]); B_z <- Z_cmds[,1:k] %*% t(Z_cmds[,1:k])
-        
+
         stress1_cmds[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
         strain_cmds[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
       }
     }
-    
+
     #Procrustes
     {
-      
+
       for(k in 2:p){
         Z_proc <- cmdscaling_test(Y,k,l=400,c=2*k,
                                   m=400,seed=seed+1000-1,'proc',n_cores = n_cores)$conf
         Z_proc <- procrustes(Z_cmds[,1:k],Z_proc)$conf
         D_z <- dist(Z_proc); B_z <- Z_proc %*% t(Z_proc)
-        
+
         stress1_proc[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
         strain_proc[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
         loss_proc[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_proc)/frobenius(Z_cmds[,1:k])
       }
     }
-    
+
     #QR
     {
-      
+
       for(k in 2:p){
         Z_qr <- cmdscaling_test(Y,k,l=400,c=2*k,
                                 m=400,seed=seed+1000-1,'qr',n_cores = n_cores)$conf
         Z_qr <- procrustes(Z_cmds[,1:k],Z_qr)$conf
         D_z <- dist(Z_qr); B_z <- Z_qr %*% t(Z_qr)
-        
+
         stress1_qr[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
         strain_qr[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
         loss_qr[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_qr)/frobenius(Z_cmds[,1:k])
       }
     }
-    
+
     #GOW
     {
-      
+
       for(k in 2:p){
         Z_gow <- cmdscaling_test(Y,k,l=400,c=2*k,
                                  m=400,seed=seed+1000-1,'gow',n_cores = n_cores)$conf
         Z_gow <- procrustes(Z_cmds[,1:k],Z_gow)$conf
         D_z <- dist(Z_gow); B_z <- Z_gow %*% t(Z_gow)
-        
+
         stress1_gow[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
         strain_gow[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
         loss_gow[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_gow)/frobenius(Z_cmds[,1:k])
       }
     }
-    
-    cat(paste(seed,'-'))
-    
+
+
+    w <- w+1; cat(round(100*w/W),' - ')
+
   }
-  
-  metricas_cmds <- list(stress1_cmds,strain_cmds)
-  metricas_proc <- list(stress1_proc,strain_proc,loss_proc)
-  metricas_qr <- list(stress1_qr,strain_qr,loss_qr)
-  metricas_gow <- list(stress1_gow,strain_gow,loss_gow)
-  
+
+  metricas_cmds <- list('stress1-cmds'=stress1_cmds,
+                        'strain_cmds'=strain_cmds)
+  metricas_proc <- list('stress1_proc'=stress1_proc,
+                        'strain_proc'=strain_proc,
+                        'loss_proc'=loss_proc)
+  metricas_qr <- list('stress1_qr'=stress1_qr,
+                      'strain_qr'=strain_qr,
+                      'loss_qr'=loss_qr)
+  metricas_gow <- list('stress1_gow'=stress1_gow,
+                       'strain_gow'=strain_gow,
+                       'loss_gow'=loss_gow)
+
   return(list(metricas_cmds,
               metricas_proc,metricas_qr,
               metricas_gow))
 }
-recover_solution_from_summary <- function(results, id, recover_scaling=FALSE){
+preparar_tabla <- function(tabla){
+  library(dplyr)
+
+  tabla <- tabla[,-1]
+
+  to_factor <- c('scenario','size', 'p','k','h','method')
+
+  tabla <- tabla %>%
+    mutate(method = as.factor(method)) %>%
+    mutate_if(is.character,as.numeric) %>%
+    mutate_at(to_factor, as.factor)
+
+  return(tabla)
+}
+simulacion_principal <- function(Nrep,scenario){
+  sizes <- c(10000,50000,100000)
+  p <- 10; k <- 5; h <- 5
+  metodos <- c('proc','qr','gow')
+  resultado <- c()
+
+  for(size in sizes){
+    cat("\n","\n",'Simulacion principal -','scen: ',scenario,
+        ' - Tamaño: ', size, ' - Av %: ')
+      resultado  <- dplyr::bind_rows(resultado,
+                                     simulacion_core(size, Nrep, scenario,
+                                                     p, k, h, metodos))
+  }
+  return(preparar_tabla(resultado))
+}
+
+
+# Funciones para el analisis y graficos (cap3)-----------
+recuperar_solucion <- function(results, id, recover_scaling=FALSE){
 
   nrep <- results$rep[id]
   scenario <- as.numeric(results$scenario[id])
@@ -409,9 +497,6 @@ recover_solution_from_summary <- function(results, id, recover_scaling=FALSE){
   }
 
 }
-
-
-# Funciones para el analisis y graficos-----------
 grafico_interaccion <- function(data,pal){
   palette(pal)
   resumen <- tidyr::pivot_wider(data, names_from = p, values_from = t,

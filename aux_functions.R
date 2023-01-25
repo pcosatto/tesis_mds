@@ -224,8 +224,8 @@ primera_simulacion <- function(Nrep){
           tf <- Sys.time()
         } else {
           t0 <- Sys.time()
-          escalado <- cmdscaling_test(X,k=2,l=400,
-                                      c= 4, m=400,
+          escalado <- cmdscaling_test(X,k=2,l=400,c=4,
+                                      m=400,
                                       method=metodos[i],seed = 16497+rep,
                                       n_cores=n_cores)$conf
           tf <- Sys.time()

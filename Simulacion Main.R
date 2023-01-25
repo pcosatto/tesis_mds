@@ -1,17 +1,16 @@
 #Simulacion Main Script
 source('aux_functions.R'); source('cmdscaling.R')
 n_cores <- parallel::detectCores()
-n_cores <- 1
 
 #Primera simulacion
-primera <- primera_simulacion(3)
+primera <- primera_simulacion(10)
 
 #Simulacion Principal - Metricas
-principal_metricas <- calcular_metricas(2)
+principal_metricas <- calcular_metricas(100)
 
 #Simulacion Principal
-principal_escenario1 <- simulacion_principal(2,1)
-principal_escenario2 <- simulacion_principal(2,2)
+principal_escenario1 <- simulacion_principal(100,1)
+principal_escenario2 <- simulacion_principal(100,2)
 
 #borrar todo lo que no sirve
 remove(dim, dims, metodos, n_cores,

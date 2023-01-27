@@ -2,17 +2,18 @@
 
 # Batería de librerias y funciones iniciales TESIS MDS-----------
 rm(list = ls())
+lib <- c('extrafont','latex2exp','xtable','scales',
+               'MASS','cmna','readxl','smacof','scatterplot3d',
+         'dplyr','beeswarm','biotools')
+for(i in lib){
+  require(lib)
+}
+#remotes::install_version("Rttf2pt1", version = "1.3.8")
+#extrafont::font_import()
+loadfonts(device="win")
 load_ini <- function(){
 
-  library(extrafont); library(latex2exp); library(xtable)
-  library(scales); library(MASS); library(cmna)
-  library(readxl); library(smacof); library(scatterplot3d)
-  library(dplyr)
-  #remotes::install_version("Rttf2pt1", version = "1.3.8")
-  #extrafont::font_import()
-  loadfonts(device="win")       #Register fonts for Windows bitmap output
-}
-load_ini()
+
 graph_par <- function(){
   par(family = "Verdana", cex.axis=0.7, cex.lab=0.7, mar=c(4,4,2,3) - 1.5,
       mgp=c(1.1,0.25,0), tcl=0)
@@ -204,8 +205,9 @@ procrustes_projection <- function(X,Y){
 primera_simulacion <- function(Nrep){
   cat('Primera simulación - Avance %: ')
 
-  resultados <- matrix(0,nrow=4,ncol=3)
   sizes <- c(1000, 2000, 3000)
+  resultados <- matrix(0,nrow=4,ncol=length(sizes))
+
   metodos <- c('cmds','proc','qr','gow')
 
   w <- 0; W <- length(sizes)*Nrep*length(metodos)
@@ -454,7 +456,6 @@ simulacion_principal <- function(Nrep,scenario){
   return(preparar_tabla(resultado))
 }
 
-
 # Funciones para el analisis y graficos (cap3)-----------
 recuperar_solucion <- function(results, id, recover_scaling=FALSE){
 
@@ -496,20 +497,6 @@ recuperar_solucion <- function(results, id, recover_scaling=FALSE){
     return(list('X0'=X0, 'X'=X, 'tiempo'=as.numeric(tf-t0,units='secs')))
   }
 
-}
-grafico_interaccion <- function(data,pal){
-  palette(pal)
-  resumen <- tidyr::pivot_wider(data, names_from = p, values_from = t,
-                                values_fn  =mean, values_fill = 0)
-  plot(c(1000,2000,3000),c(resumen$'2'), type='l', ylim=c(0,1.1),
-       xlim=c(1000,3300),
-       xlab='Tamaño de muestra', ylab='Tiempo medio (s)',
-       lwd=2,col=1)
-  lines(c(1000,2000,3000),c(resumen$'10'), lwd=2,col=2)
-  lines(c(1000,2000,3000),c(resumen$'25'), lwd=2, col=3)
-  lines(c(1000,2000,3000),c(resumen$'50'), lwd=2, col=4)
-  text(rep(3000,3),resumen[3,-1], label=c('p=2','p=10','p=25','p=50'),
-       pos=4, cex=0.6)
 }
 
 

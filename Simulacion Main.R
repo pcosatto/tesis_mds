@@ -1,6 +1,7 @@
 #Simulacion Main Script
 source('aux_functions.R'); source('cmdscaling.R')
 n_cores <- parallel::detectCores()
+n_cores <- 1
 
 #Primera simulacion
 primera <- primera_simulacion(10)

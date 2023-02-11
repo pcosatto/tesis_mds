@@ -5,14 +5,10 @@ rm(list = ls())
 lib <- c('extrafont','latex2exp','xtable','scales',
                'MASS','cmna','readxl','smacof','scatterplot3d',
          'dplyr','beeswarm','biotools')
-for(i in lib){
-  require(lib)
-}
+lapply(lib, require, character.only = TRUE)
 #remotes::install_version("Rttf2pt1", version = "1.3.8")
 #extrafont::font_import()
 loadfonts(device="win")
-load_ini <- function(){
-
 
 graph_par <- function(){
   par(family = "Verdana", cex.axis=0.7, cex.lab=0.7, mar=c(4,4,2,3) - 1.5,
@@ -77,6 +73,41 @@ I <- function(n){
 }
 H <- function(n,m){
   diag(rep(1,n)) - 1/n * matrix(1, n, 1) %*% matrix(1,1,n)
+}
+pc.plot3d <- function(X,col=NULL,id=NULL, size=6, cube=TRUE){
+
+  library(plotly)
+  library(RColorBrewer)
+
+  n <- nrow(X)
+  p <- ncol(X)
+
+  data <- data.frame(scale(X, scale=FALSE))
+  names(data) <- c('x1','x2','x3')
+
+  if(is.null(col)==TRUE){
+    data$col <- rep('black',n)
+  } else {
+    data$col <-col}
+
+  if(is.null(id)==TRUE){
+    data$id<-1:n
+  } else {data$id <- id}
+
+  fig <- plot_ly(data,
+                 x = ~data[,1], y = ~data[,2], z = ~data[,3],
+                 colors = brewer.pal(p,'Set1'), text=~id,
+                 marker = list(size=size))
+  fig <- fig %>% add_markers(color = ~col)
+  fig <- fig %>% layout(scene = list(xaxis = list(title = colnames(X)[1],
+                                                  range = c(min(data$x1),max(data$x1))),
+                                     yaxis = list(title = colnames(X)[2],
+                                                  range = c(min(data$x2),max(data$x2))),
+                                     zaxis = list(title = colnames(X)[3],
+                                                  range = c(min(data$x3),max(data$x3))),
+                                     aspectmode = ifelse(cube==TRUE,'cube','auto')))
+  fig
+
 }
 
 
@@ -199,8 +230,6 @@ procrustes_projection <- function(X,Y){
   return(A_star[,1:q])
 }
 
-
-
 # Funciones para la simulacion (cap3) -----------
 primera_simulacion <- function(Nrep){
   cat('Primera simulación - Avance %: ')
@@ -314,8 +343,8 @@ simulacion_core <- function(n,Nrep,scenario,p,k,h=0,metodos){
 
 
 }
-calcular_metricas <- function(Nrep){
-  cat('Metricas - Avance %: ')
+metricas_n_fijo <- function(Nrep){
+  cat('Metricas con n=1000 - Avance %: ')
   p <- 10; d <- 5
   sigma <- diag(c(rep(5,d)))
   sigma_err <- diag(rep(1,p-d))
@@ -336,11 +365,10 @@ calcular_metricas <- function(Nrep){
   }
 
   w <- 0; W <- Nrep
+  set.seed(16497); X <- mvrnorm(1000,rep(0,d),sigma)
   for(seed in 1:Nrep){
     {
-      set.seed(seed)
-      X <- mvrnorm(1000,rep(0,d),sigma)
-      E <- mvrnorm(1000,rep(0,p-d),sigma_err)
+      set.seed(seed); E <- mvrnorm(1000,rep(0,p-d),sigma_err)
       Y <- cbind(X,E)
       delta_x <- dist(X)
       delta_y <- dist(Y)
@@ -356,7 +384,7 @@ calcular_metricas <- function(Nrep){
         D_z <- dist(Z_cmds[,1:k]); B_z <- Z_cmds[,1:k] %*% t(Z_cmds[,1:k])
 
         stress1_cmds[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
-        strain_cmds[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        strain_cmds[seed,k-1] <- frobenius(B_y - B_z)/frobenius(B_y)
       }
     }
 
@@ -369,8 +397,8 @@ calcular_metricas <- function(Nrep){
         Z_proc <- procrustes(Z_cmds[,1:k],Z_proc)$conf
         D_z <- dist(Z_proc); B_z <- Z_proc %*% t(Z_proc)
 
-        stress1_proc[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
-        strain_proc[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        stress1_proc[seed,k-1] <-  frobenius(delta_x - D_z)/frobenius(D_z)
+        strain_proc[seed,k-1] <- frobenius(B_y - B_z)/frobenius(B_y)
         loss_proc[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_proc)/frobenius(Z_cmds[,1:k])
       }
     }
@@ -385,7 +413,7 @@ calcular_metricas <- function(Nrep){
         D_z <- dist(Z_qr); B_z <- Z_qr %*% t(Z_qr)
 
         stress1_qr[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
-        strain_qr[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        strain_qr[seed,k-1] <- frobenius(B_y - B_z)/frobenius(B_y)
         loss_qr[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_qr)/frobenius(Z_cmds[,1:k])
       }
     }
@@ -400,7 +428,7 @@ calcular_metricas <- function(Nrep){
         D_z <- dist(Z_gow); B_z <- Z_gow %*% t(Z_gow)
 
         stress1_gow[seed,k-1] <- frobenius(delta_x - D_z)/frobenius(D_z)
-        strain_gow[seed,k-1] <- frobenius(B_x - B_z)/frobenius(B_x)
+        strain_gow[seed,k-1] <- frobenius(B_y - B_z)/frobenius(B_y)
         loss_gow[seed,k-1] <- frobenius(Z_cmds[,1:k]-Z_gow)/frobenius(Z_cmds[,1:k])
       }
     }

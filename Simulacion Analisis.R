@@ -2,11 +2,14 @@
 source('aux_functions.R')
 load("Simulacion Main Results.RData")
 
-pal <- c('orange','tomato2','maroon2',
-                 'steelblue2')
-palette(pal)
+principal_escenario1$method <- factor(principal_escenario1$method,
+                                      levels = c('proc','qr','gow'))
+principal_escenario2$method <- factor(principal_escenario2$method,
+                                      levels = c('proc','qr','gow'))
 
-#PRIMER BLOQUE (Preliminar de tiempos) ------------------------
+#pal <- brewer_pal(palette = "Dark2")(4)
+pal <- c('orange2','tomato3','maroon3','steelblue3')
+palette(pal)
 
 #Tabla 3-1
 round(primera,2)
@@ -39,6 +42,7 @@ ax <- 0:3
   text(rep(3,3),primera$'3000'[2:4],
        label=c('proc','qr','gow'),pos=4, cex=0.75)
 }
+
 rm(primera)
 
 #Plots de metricas
@@ -60,7 +64,7 @@ rm(principal_metricas)
   lines(2:p,qr[[2]], col=3, lwd=2)
   lines(2:p,gow[[2]], col=4, lwd=2)
   abline(v=5,col='grey50',lty=10)
-  legend(7,0.85,c('qr','proc','gow','cmds'),cex=0.6,
+  legend(7,0.85,c('qr','proc','gow','cmds'),cex=0.8,
   col=c(3,2,4,1),lwd=1.5,bty='n')
 }
 
@@ -74,7 +78,7 @@ rm(principal_metricas)
   lines(2:p,qr[[1]], col=3, lwd=2)
   lines(2:p,gow[[1]], col=4, lwd=2)
   abline(v=5,col='grey50',lty=10)
-  legend(7,0.85,c('qr','proc','gow','cmds'),cex=0.6,
+  legend(7,0.85,c('qr','proc','gow','cmds'),cex=0.8,
          col=c(3,2,4,1),lwd=1.5,bty='n')
 
 }
@@ -89,157 +93,151 @@ rm(principal_metricas)
   lines(2:p,qr[[3]], col=3, lwd=2)
   lines(2:p,gow[[3]], col=4, lwd=2)
   abline(v=5,col='grey50',lty=10)
-  legend(7,0.85,c('qr','proc','gow','cmds'),cex=0.6,
+  legend(7,0.85,c('qr','proc','gow','cmds'),cex=0.8,
          col=c(3,2,4,1),lwd=1.5,bty='n')
 
 }
 
 #summary table
-table <- rbind(c(sapply(cmds,function(x) x[4]),0),
+table_1 <- rbind(c(sapply(cmds,function(x) x[4]),0),
 sapply(proc,function(x) x[4]),
 sapply(qr,function(x) x[4]),
 sapply(gow,function(x) x[4]))
-colnames(table) <- c('sigma_D','sigma_B','loss')
-rownames(table) <- c('cmds','proc','qr','gow')
-table
+colnames(table_1) <- c('sigma_D','sigma_B','loss')
+rownames(table_1) <- c('cmds','proc','qr','gow')
+table_1
 
 rm(cmds,gow,proc,qr,table)
-
-#FIG 2-2
+par(mar=c(1,1,1,1))
+#fig 3-5
 {
-  proc <- principal_escenario1 %>%
-    filter(method=='proc') %>%
-    select(size,t)  %>%
-    group_by(size) %>%
-    summarize(average=mean(t)) %>%
-    select(average) %>% unlist()
+  beeswarm(t ~ method+size,data=principal_escenario1,
+           pch=18,col=alpha(pal[rep(c(2,3,4),3)],0.7), dlim=c(-3,17),
+           xaxt='n',
+           method='compactswarm',priority='random',
+           corral='random',corralWidth=0.8,cex=1,
+           labels=1:11, at=c(1,2,3,5,6,7,9,10,11),
+           glab='tamaño de muestra',dlab='tiempo(seg)')
+  abline(v=4,lty=2,col='grey50')
+  abline(v=8,lty=2,col='grey50')
+  text(cbind(c(2,6,10),rep(-2.5,3)),
+       label=c('n = 10k','n = 50k','n = 100k'),cex=0.8)
+  text(cbind(c(1,2,3,5,6,7,9,10,11),
+             rep(-0.75,11)),
+       label=rep(c('proc','qr','gow'),3),cex=0.7)
 
-  qr <- principal_escenario1 %>%
-    filter(method=='qr') %>%
-    select(size,t)  %>%
-    group_by(size) %>%
-    summarize(average=mean(t)) %>%
-    select(average) %>% unlist()
-
-  gow <- principal_escenario1 %>%
-    filter(method=='gow') %>%
-    select(size,t)  %>%
-    group_by(size) %>%
-    summarize(average=mean(t)) %>%
-    select(average) %>% unlist()
 
 }
+
+#fig 3-6
 {
-  plot(c(10,50,100),proc, type='b',pch=20,
-       xaxt='n',xlab='tamaño de muestra (miles)',
-       ylab='tiempo(seg)', xlim=c(0,120),
-       ylim=c(0,15),col=2)
-  axis(1, at=c(10,50,100), labels=c(10,50,100))
-  points(c(10,50,100),qr, type='b',pch=20,
-         col=3)
-  points(c(10,50,100),gow, type='b',pch=20,
-         col=4)
-}
-
-
-#SEGUNDO BLOQUE----------------
-
-#calculo de bias y ecm
-sesgo_ecm <- function(tabla){
-  bias <- tabla %>%
-    select('eig 1','eig 2','eig 3','eig 4','eig 5') %>%
-    apply(1,function(x) x-5 ) %>% t() %>%  colMeans
-  ecm <- tabla %>%
-    select('eig 1','eig 2','eig 3','eig 4','eig 5') %>%
-    apply(1,function(x) (x-5)^2 ) %>% t() %>% colMeans
-  return(list('bias'=bias,'ecm'=ecm))
-}
-
-
-sesgo_ecm(filtrar_tabla(principal_escenario1,'proc',10000))
-
-
-
-
-principal_escenario1 <- sesgo_y_ecm(principal_escenario1)
-principal_escenario2 <- sesgo_y_ecm(principal_escenario2)
-
-
-
-
-swarms <- function(tabla){
-  beeswarm(ecm ~ size ,data=filtrar(tabla,'proc'),
-           pch=20,col=2,method='compactswarm',priority='random',spacing=sp, ylim=c(0,1))
-  beeswarm(ecm ~ size ,data=filtrar(tabla,'qr'),
-           pch=20,col=3,method='compactswarm',priority='random',spacing=sp, ylim=c(0,1))
-  beeswarm(ecm ~ size ,data=filtrar(tabla,'gow'),
-           pch=20,col=4,method='compactswarm',priority='random',spacing=sp, ylim=c(0,1))
- }
-swarms(principal_escenario2)
-
-which(filtrar(principal_escenario1,'gow')$ecm>0.4)
-
-
-
-
-
-
-
-#Analisis de sesgo y ECM -------
-grafico_autovalores_1 <- function(met,siz, col){
-  data <- segundo_bloque_1 %>%
-    filter(method==met,size==siz) %>%
-    select('eig 1','eig 2','eig 3','eig 4','eig 5')
-
-  plot(1:5,data[1,],
-       type='l', ylim=c(14,16)
-       ,col=col, xlab='autovalor',
-       ylab='NULL')
-  for(i in 2:100){
-    lines(1:5,data[i,], col=col)
+  medidas <- function(tabla){
+    mean_eig <- tabla %>%
+      select('eig 1','eig 2','eig 3','eig 4','eig 5') %>%
+      apply(1,function(x) mean(x) )
+    return(cbind.data.frame(tabla,mean_eig))
   }
+  beeswarm(mean_eig ~ size+method,data=medidas(principal_escenario1),
+           pch=16,col=alpha(pal[c(2,2,2,3,3,3,4,4,4)],0.7),
+           xaxt='n',dlim=c(4.4,5.6),
+           method='compactswarm',priority='random',
+           corral='wrap',corralWidth=0.8,cex=0.8,
+           labels=1:11, at=c(1,2,3,5,6,7,9,10,11),glab='',
+           dlab=TeX(r'($\bar{\lambda}$)'))
+  #abline(v=4,lty=2,col='grey50')
+  #abline(v=8,lty=2,col='grey50')
+  abline(h=5,lty=4, col='grey50')
+  text(cbind(c(2,6,10),rep(5.59,3)),
+       label=c('proc','qr','gow'),cex=0.8)
+  text(cbind(c(1,2,3,5,6,7,9,10,11),rep(4.41,3)),
+       label=rep(c('10k','50k','100k'),3),cex=0.7)
+  text(cbind(c(2,6,10),rep(4.48,3)),
+       label=c('n','n','n'),cex=0.7)
+
 }
 
-grafico_autovalores_1('proc',10000,'tomato3')
-grafico_autovalores_1('qr',10000,'magenta3')
-grafico_autovalores_1('gow',10000,'steelblue3')
+#fig 3-7
+{
+  beeswarm(mean_eig ~ size+method,data=medidas(principal_escenario2),
+           pch=16,col=alpha(pal[c(2,2,2,3,3,3,4,4,4)],0.7),
+           xaxt='n',dlim=c(4.4,5.6),
+           method='compactswarm',priority='random',
+           corral='wrap',corralWidth=0.8,cex=0.8,
+           labels=1:11, at=c(1,2,3,5,6,7,9,10,11),
+           dlab=TeX(r'($\bar{\lambda}$)'), glab='')
+  abline(h=5,lty=4, col='grey50')
+  text(cbind(c(2,6,10),rep(5.59,3)),
+       label=c('proc','qr','gow'),cex=0.8)
+  text(cbind(c(1,2,3,5,6,7,9,10,11),rep(4.41,3)),
+       label=rep(c('10k','50k','100k'),3),cex=0.7)
+  text(cbind(c(2,6,10),rep(4.48,3)),
+       label=c('n','n','n'),cex=0.7)
 
-grafico_autovalores_1('proc',50000,'tomato3')
-grafico_autovalores_1('qr',50000,'magenta3')
-grafico_autovalores_1('gow',50000,'steelblue3')
+}
 
-grafico_autovalores_1('proc',100000,'tomato3')
-grafico_autovalores_1('qr',100000,'magenta3')
-grafico_autovalores_1('gow',100000,'steelblue3')
+#Calculo del ecm de los eigenvalues
+ecm_calculation <- function(tabla,metodo,n){
+  PAR <- tabla %>%
+    filter(method==metodo,size==n) %>%
+    select(c('eig 1','eig 2','eig 3','eig 4','eig 5'))
 
-grafico_autovalores_2 <- function(met,siz, col){
-  data <- segundo_bloque_2 %>%
-    filter(method==met,size==siz) %>%
-    select('eig 1','eig 2','eig 3','eig 4','eig 5')
+  U <- scale(PAR,scale=FALSE)
+  v <- colMeans(apply(PAR,2,function(x) (x-5)))
 
-  plot(1:5,data[1,],
-       type='l', ylim=c(14,18)
-       ,col=col, xlab='autovalor',
-       ylab='NULL')
-  for(i in 2:100){
-    lines(1:5,data[i,], col=col)
+  squared_bias <- round(as.numeric(t(v) %*% v),4)
+  variance <- round(sum(diag(cov(U))),4)
+
+  result <- c('metodo'=metodo,'n'=n,'ecm'=squared_bias+variance,
+              'var'=variance,'bias'=squared_bias)
+
+  return(result)
+}
+
+#fig 3-8
+{
+  table_2 <- c()
+  metodos <-  c('proc','qr','gow')
+  sizes <- c('10000','50000','1e+05')
+  for(metodo in metodos){
+    for(size in sizes){
+      table_2 <- rbind(table_2,
+                       ecm_calculation(principal_escenario1,metodo,size))
+    }
   }
+  table_2 <- as.data.frame(table_2)
+  table_2$ecm <- as.numeric(table_2$ecm); table_2$var <- as.numeric(table_2$var);
+  table_2$bias <- as.numeric(table_2$bias)
+  print(table_2)
+  plot(c(10,50,100),table_2$ecm[1:3], type='l', col=2, lwd=2, ylim=c(0,0.2),
+       xaxt='n', xlab='tamaño de muestra', ylab='', xlim=c(0,120))
+  axis(1, at=c(10,50,100), labels=c('10k','50k','100k'))
+  lines(c(10,50,100),table_2$ecm[4:6], col=3, lwd=2)
+  lines(c(10,50,100),table_2$ecm[7:9], col=4, lwd=2)
+  text(rep(110,3),c(0.009,0.02,0.09), c('gow','proc','qr'), cex=0.8)
 }
 
-grafico_autovalores_2('proc',10000,'tomato3')
-grafico_autovalores_2('qr',10000,'magenta3')
-grafico_autovalores_2('gow',10000,'steelblue3')
-
-grafico_autovalores_2('proc',50000,'tomato3')
-grafico_autovalores_2('qr',50000,'magenta3')
-grafico_autovalores_2('gow',50000,'steelblue3')
-
-grafico_autovalores_2('proc',100000,'tomato3')
-grafico_autovalores_2('qr',100000,'magenta3')
-grafico_autovalores_2('gow',100000,'steelblue3')
-
-
-
+#fig 3-9
+{
+  table_3 <- c()
+  metodos <-  c('proc','qr','gow')
+  sizes <- c('10000','50000','1e+05')
+  for(metodo in metodos){
+    for(size in sizes){
+      table_3 <- rbind(table_3,
+                       ecm_calculation(principal_escenario2,metodo,size))
+    }
+  }
+  table_3 <- as.data.frame(table_3)
+  table_3$ecm <- as.numeric(table_3$ecm); table_2$var <- as.numeric(table_3$var);
+  table_3$bias <- as.numeric(table_3$bias)
+  print(table_3)
+  plot(c(10,50,100),table_3$ecm[1:3], type='l', col=2, lwd=2, ylim=c(0,0.2),
+       xaxt='n', xlab='tamaño de muestra', ylab='', xlim=c(0,120))
+  axis(1, at=c(10,50,100), labels=c('10k','50k','100k'))
+  lines(c(10,50,100),table_3$ecm[4:6], col=3, lwd=2)
+  lines(c(10,50,100),table_3$ecm[7:9], col=4, lwd=2)
+  text(rep(110,3),table_3$ecm[c(3,6,9)], c('proc','qr','gow'), cex=0.8)
+}
 
 
 

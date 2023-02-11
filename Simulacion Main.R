@@ -6,8 +6,9 @@ n_cores <- 1
 #Primera simulacion
 primera <- primera_simulacion(10)
 
-#Simulacion Principal - Metricas
-principal_metricas <- calcular_metricas(100)
+#Simulacion Principal - n fijo
+principal_metricas <- metricas_n_fijo(100)
+
 
 #Simulacion Principal
 principal_escenario1 <- simulacion_principal(100,1)

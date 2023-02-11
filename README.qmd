@@ -1,0 +1,15 @@
+-   \texttt{aux_functions.R} tiene las librerías y funciones pre-programadas para todo el trabajo.
+
+-   \texttt{cmdscaling.R} tiene el programa usado en el capítulo 3 para simular los métodos rápidos.
+
+-   \texttt{Ejemplos Cap1.R} tiene los ejemplos del capítulo 1.
+
+-   \texttt{Ejemplos Cap2.R} tiene los ejemplos del capítulo 2.
+
+-   \texttt{Simulacion Main.R} tiene el código de la simulación del capítulo 3.
+
+-   \texttt{Simulacion Main Results.RData} tiene el environment de los resultados de correr el código \texttt{Simulacion Main.R}.
+
+-   \texttt{Simulacion Analisis.R} tiene los gráficos y tablas de análisis de los resultados del capitulo 3.
+
+-   

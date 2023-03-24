@@ -213,32 +213,25 @@ ecm_calculation <- function(tabla,metodo,n){
   axis(1, at=c(10,50,100), labels=c('10k','50k','100k'))
   lines(c(10,50,100),table_2$ecm[4:6], col=3, lwd=2)
   lines(c(10,50,100),table_2$ecm[7:9], col=4, lwd=2)
-  text(rep(110,3),c(0.009,0.02,0.09), c('gow','proc','qr'), cex=0.8)
-}
+  text(rep(110,3),table_2$ecm[c(3,6,9)], c('proc esc1','qr esc1','gow esc1'), cex=0.8)
 
-#fig 3-9
-{
   table_3 <- c()
-  metodos <-  c('proc','qr','gow')
-  sizes <- c('10000','50000','1e+05')
   for(metodo in metodos){
     for(size in sizes){
-      table_3 <- rbind(table_3,
-                       ecm_calculation(principal_escenario2,metodo,size))
+      table_3 <- rbind(table_3,ecm_calculation(principal_escenario2,metodo,size))
     }
   }
   table_3 <- as.data.frame(table_3)
   table_3$ecm <- as.numeric(table_3$ecm); table_2$var <- as.numeric(table_3$var);
   table_3$bias <- as.numeric(table_3$bias)
   print(table_3)
-  plot(c(10,50,100),table_3$ecm[1:3], type='l', col=2, lwd=2, ylim=c(0,0.2),
-       xaxt='n', xlab='tamaño de muestra', ylab='', xlim=c(0,120))
+  lines(c(10,50,100),table_3$ecm[1:3], type='l', col=2, lwd=2, ylim=c(0,0.2),
+        xaxt='n', xlab='tamaño de muestra', ylab='', xlim=c(0,120),lty=2)
   axis(1, at=c(10,50,100), labels=c('10k','50k','100k'))
-  lines(c(10,50,100),table_3$ecm[4:6], col=3, lwd=2)
-  lines(c(10,50,100),table_3$ecm[7:9], col=4, lwd=2)
-  text(rep(110,3),table_3$ecm[c(3,6,9)], c('proc','qr','gow'), cex=0.8)
+  lines(c(10,50,100),table_3$ecm[4:6], col=3, lwd=2, lty=2)
+  lines(c(10,50,100),table_3$ecm[7:9], col=4, lwd=2, lty=2)
+  text(rep(110,3),table_3$ecm[c(3,6,9)], c('proc esc2','qr esc2',
+                                           'gow esc2'), cex=0.8,
+       col='grey50')
 }
-
-
-
 

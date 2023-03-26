@@ -217,8 +217,6 @@ MDS_GOF(delta, 'CMDS')$sigma_strain[3]
 #------Vinos (biplots)-------
 {
   rm(list = setdiff(ls(), lsf.str()))
-  par(family = "Verdana", cex.axis=0.7, cex.lab=0.7, mar=c(4,4,2,3) - 1.5,
-      mgp=c(1.1,0.25,0), tcl=0)
   wine <- read.csv("C:/Users/pcosa/Desktop/82.17/82.17 Presentaciones/Data multivariada/winequality-red.csv")
   wine <- wine[,c(7,8,9,11)]
   data <- wine
@@ -232,12 +230,12 @@ MDS_GOF(delta, 'CMDS')$sigma_strain[3]
   rownames(data) <- 1:100
   }
 
-marca <- max(abs(data))
+marca <- 3
 ejes <- 7
 #Fig 1-15 - PCA biplot
 {
   eig <- eigen(cov(data))
-  Gamma <- eig$vectors[,1:2]
+  Gamma <- -1*eig$vectors[,1:2]
   Lambda <- diag(eig$values[1:2]^(1/2))
   G_pca <- data %*% Gamma
   H_pca <- diag(marca,p,p) %*% Gamma
@@ -253,73 +251,32 @@ ejes <- 7
 
 #Fig 1-16
 {
+  grid <- seq(0.7,2.2,0.01)
   stress <- c()
-  for(j in seq(0.1,4.9,0.1)){
-    stress <- c(stress,MDS_GOF(dist(data, 'minkowski', p=j), 'CMDS',
-                               kmax=2)$sigma_1[2])
+  for(j in grid){
+  stress <- c(stress,MDS_GOF(dist(data, 'minkowski', p=j), 'CMDS',
+  kmax=2)$sigma_1[2])
   }
-  plot(seq(0.1,4.9,0.1),stress, type='l', ylim=c(0,1),
+
+  plot(grid,stress, type='l', ylim=c(min(stress),max(stress)),
        xlab= 'p')
 }
-p_opt <- seq(0.1,4.9,0.1)[which.min(stress)]
+p_opt <- grid[which.min(stress)]
 
-#Fig 1-17 Linear regression biplot
-
-
-#Fig 1-18 Nonlinear biplot
+#Fig 1-17 MDS biplot con la distancia de minkowski
 {
-  delta <- as.matrix(dist(data, method='minkowski', p=p_opt))
-  n <- nrow(data)
-  H <- diag(1,n,n) - (1/n) * matrix(1,n,1) %*% matrix(1,1,n)
-  B <- -1/2 * H %*% delta^2 %*% H
-  eig <- eigen(B)
+  G_mds <- cmdscale(dist(data,'minkowski',p=p_opt),2)
+  X <- as.matrix(data)
+  Beta <- solve(t(X) %*% X) %*% t(X) %*% G_mds
+  H_mds <-  diag(marca,p,p) %*% Beta
 
-  k <- sum(eig$values>0)
-  #Configuracion en el espacio R de dimension k
-  Y <- eig$vectors[,1:k] %*% diag(eig$values[1:k]^(1/2))
-
-  E_orig <- list()
-  for(i in 1:p){
-    seq <- seq(0,marca,1/6*marca)
-    E_orig[[i]] <- matrix(0,length(seq),p)
-    E_orig[[i]][,i] <- seq
-  }
-
-  D <- -1/2 * delta^2
-
-  E_R <- list()
-  for(i in 1:p){
-    E_R[[i]] <- t(apply(E_orig[[i]],1,locus))
-  }
-
-  Y <- cbind(Y,matrix(0,n,1))
-  P <- procrustes_projection(Y,Y[,1:2])
-  E_L <- lapply(E_R, function(i) i %*%P)
-
-  #Proyeccion optima al subespacio L de los puntos en R
-  G_mds <- Y %*% P
-
-  svd <- svd(t(G_pca) %*% H %*% G_mds)
-  V <- svd$v
-  U <- svd$u
-  Q <- (V %*% t(U))[,1:2]
-
-  G_mds <- G_mds %*% Q
-  plot(G_mds, type='n',
-       xlab='Z1', ylab='Z2',
-       xlim=c(-ejes,ejes), ylim=c(-ejes,ejes))
-  text(G_mds, cex= 0.7, col='steelblue')
-  for(i in 1:ncol(data)){
-    H_mds <- E_L[[i]] %*% Q
-    lines(H_mds)
-    text(x=H_mds[nrow(H_mds),1], y=H_mds[nrow(H_mds),2], label=names(wine)[i],
-         pos=1, cex=0.5, srt=0)
-  }
-
+  plot(G_mds, type='n',xlab='Z1', ylab='Z2', xlim=c(-ejes,ejes),
+       ylim=c(-ejes,ejes))
+  text(G_mds, cex=0.7,col= alpha('steelblue',0.7))
+  arrows(0,0,H_mds[,1],H_mds[,2], length=0.02)
+  text(x=H_mds[,1], y=H_mds[,2], label=names(wine),
+       pos=3, cex=0.5, srt=0)
 }
-
-
-
 
 
 

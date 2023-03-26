@@ -4,7 +4,8 @@
 rm(list = ls())
 lib <- c('extrafont','latex2exp','xtable','scales',
                'MASS','cmna','readxl','smacof','scatterplot3d',
-         'dplyr','beeswarm','biotools')
+         'dplyr','beeswarm','biotools','StatMatch',
+         'hexbin','RColorBrewer','fpc','dbscan')
 lapply(lib, require, character.only = TRUE)
 #remotes::install_version("Rttf2pt1", version = "1.3.8")
 #extrafont::font_import()
@@ -73,6 +74,15 @@ I <- function(n){
 }
 H <- function(n,m){
   diag(rep(1,n)) - 1/n * matrix(1, n, 1) %*% matrix(1,1,n)
+}
+panel.hist <- function(x, ...)
+{
+  usr <- par("usr")
+  par(usr = c(usr[1:2], 0, 1.5) )
+  h <- hist(x, plot = FALSE)
+  breaks <- h$breaks; nB <- length(breaks)
+  y <- h$counts; y <- y/max(y)
+  rect(breaks[-nB], 0, breaks[-1], y, col = "lightblue", ...)
 }
 pc.plot3d <- function(X,col=NULL,id=NULL, size=6, cube=TRUE){
 
@@ -527,4 +537,46 @@ recuperar_solucion <- function(results, id, recover_scaling=FALSE){
 
 }
 
+#Functions for clustering in chapter 4
+optimize_dbscan <- function(data,eps_range,minpts_range){
 
+  # Initialize variables
+  best_res <- -Inf
+  best_eps <- NA
+  best_minpts <- NA
+
+  # Loop over the range of parameters
+  for (eps in eps_range) {
+    for (minpts in minpts_range) {
+      # Run DBSCAN with the current parameters
+      cluster <- dbscan::dbscan(data, eps=eps, minPts=minpts)$cluster
+      if(max(cluster) <= 3){break}
+      print(c(eps,minpts))
+      res <- calinhara(data[cluster!=0,], cluster[cluster!=0])
+
+      if(res > best_res){
+        best_res <- res
+        best_eps <- eps
+        best_minpts <- minpts
+      }
+    }
+  }
+
+  # Print
+  cat("Best eps:", best_eps, "\n")
+  cat("Best minPts:", best_minpts, "\n")
+  cat("Best Value:", best_res, "\n")
+
+  return(par=c(best_eps,best_minpts))
+}
+plot_group <- function(data,cluster,i, palette){
+
+  prc <- apply(data,2,function(x) {
+    ecdf(x)(median(x[cluster==i]))*100
+  })
+
+  par(mar=c(2,8,1,2))
+  barplot(prc,
+          col=palette[i], horiz=TRUE,
+          xlim=c(0,100), las=2)
+}
